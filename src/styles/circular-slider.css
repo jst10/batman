@@ -6,3 +6,16 @@ canvas.circular-slider {
     left: 0;
     display: inline-block;
 }
+
+span.circular-slider-dot {
+    background-color: #ffffff;
+    border: 1px solid #b8b8b8;
+    border-radius: 50%;
+    display: inline-block;
+    position: absolute;
+    cursor: pointer;
+}
+
+span.circular-slider-dot:hover {
+    background-color: #dcdcdc;
+}
