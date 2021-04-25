@@ -1,4 +1,128 @@
+class Point {
+    constructor(x, y) {
+        this.x = x;
+        this.y = y;
+    }
+
+    toString() {
+        return "x:" + this.x + "y:" + this.y;
+    }
+}
+
+class EventsListener {
+    constructor(id, centerPoint, innerRadius, outerRadius, callback) {
+        this.id = id;
+        this.centerPoint = centerPoint;
+        this.innerRadius = innerRadius;
+        this.outerRadius = outerRadius;
+        this.callback = callback;
+    }
+}
+
+class EventsHandler {
+    nextListenerId = 0;
+    idToEventListener = {}
+    centerPointToListOfEventListeners = {}
+    activeEventListener = undefined;
+
+    constructor() {
+        this.init();
+    }
+
+    registerEventListener(centerPoint, innerRadius, outerRadius, callback) {
+        let eventListener = new EventsListener(CircularSlider.nextListenerId, centerPoint, innerRadius, outerRadius, callback);
+        this.idToEventListener[eventListener.id] = eventListener;
+        this.insertEventListenerIntoCenterPointDict(eventListener);
+        return CircularSlider.nextListenerId++;
+    }
+
+    insertEventListenerIntoCenterPointDict(eventListener) {
+        if (!this.centerPointToListOfEventListeners.hasOwnProperty(eventListener.centerPoint)) {
+            this.centerPointToListOfEventListeners[eventListener.centerPoint] = []
+        }
+        this.centerPointToListOfEventListeners[eventListener.centerPoint].push(eventListener);
+    }
+
+    removeEventListenerFromEventListenerIntoCenterPointDict(eventListener) {
+        let eventListeners = this.centerPointToListOfEventListeners[eventListener.centerPoint];
+        let index = -1;
+        for (let i = 0; i < eventListeners.length; i++) {
+            if (eventListeners[i].id === eventListener.id) {
+                index = i;
+                break;
+            }
+        }
+        if (index !== -1) {
+            eventListeners.splice(index, 1);
+        }
+    }
+
+    updateRadiusOfEventListener(id, innerRadius, outerRadius) {
+        this.idToEventListener[id].innerRadius = innerRadius;
+        this.idToEventListener[id].outerRadius = outerRadius;
+    }
+
+    updateCenterPointOfEventListener(id, newCenterPoint) {
+        let eventListener = this.idToEventListener[id];
+        this.removeEventListenerFromEventListenerIntoCenterPointDict(eventListener);
+        this.idToEventListener[id].centerPoint = newCenterPoint;
+        this.insertEventListenerIntoCenterPointDict(eventListener);
+    }
+
+    handleActiveTouchEvent(event) {
+        let centerX = this.activeEventListener.centerPoint.x;
+        let centerY = this.activeEventListener.centerPoint.y;
+        let cursorX = event.clientX;
+        let cursorY = event.clientY;
+        let angle = Math.atan2(cursorY - centerY, cursorX - centerX);
+        angle = angle + 0.5 * Math.PI;
+        if (angle < 0) {
+            angle = angle + Math.PI * 2;
+        }
+        let anglePercentage = angle / (Math.PI * 2);
+        this.activeEventListener.callback(anglePercentage);
+    }
+
+    init() {
+        document.addEventListener("mousemove", (event) => {
+            if (this.activeEventListener !== undefined) {
+                this.handleActiveTouchEvent(event);
+            }
+        });
+        document.addEventListener("mousedown", (event) => {
+            for (let centerPoint in this.centerPointToListOfEventListeners) {
+                let eventListeners = this.centerPointToListOfEventListeners[centerPoint];
+                for (let i = 0; i < eventListeners.length; i++) {
+                    let eventListener = eventListeners[i];
+                    let centerX = eventListener.centerPoint.x;
+                    let centerY = eventListener.centerPoint.y;
+                    let cursorX = event.clientX;
+                    let cursorY = event.clientY;
+                    let distance = Math.sqrt(Math.pow((cursorX - centerX), 2) + Math.pow((cursorY - centerY), 2));
+                    if (distance >= eventListener.innerRadius && distance <= eventListener.outerRadius) {
+                        this.activeEventListener = eventListener;
+                        this.handleActiveTouchEvent(event);
+                        break;
+                    }
+
+                }
+
+            }
+        });
+        document.addEventListener("mouseup", (event) => {
+            this.activeEventListener = undefined;
+        });
+        document.addEventListener("mouseleave", (event) => {
+            this.activeEventListener = undefined;
+        });
+    }
+}
+
+
 class CircularSlider {
+
+    static eventHandler = new EventsHandler();
+
     static getRandomColor() {
         return "#" + Math.floor(Math.random() * 16777215).toString(16);
     }
@@ -23,6 +147,7 @@ class CircularSlider {
         return canvas;
     }
 
+    id = undefined;
     container = undefined;
     progressCanvas = undefined;
     gridCanvas = undefined;
@@ -41,16 +166,28 @@ class CircularSlider {
     settingMode = false;
 
 
+    centerPoint = undefined;
+    innerRadius = undefined;
+    outerRadius = undefined;
+
+
     // NOTE I make options optional, you do not need to provide them
     constructor(container, options) {
         this.container = container;
         this.gridColor = container.style.backgroundColor;
         this.setValuesFromOptions(options);
         this.createViews();
-        this.initListeners();
+        this.calculateSomeStuff();
+        this.id = CircularSlider.eventHandler.registerEventListener(this.centerPoint, this.innerRadius, this.outerRadius, (anglePercentage) => {
+            let step = Math.ceil(anglePercentage * this.steps);
+            this.value = step * (this.maxValue - this.minValue) / this.steps;
+            this.drawProgress();
+        })
+
         this.drawProgress();
         this.drawGrid();
     }
+
 
     setValuesFromOptions(options) {
         this.lockRadius = false;
@@ -76,57 +213,12 @@ class CircularSlider {
     }
 
     calculateSomeStuff() {
-
-    }
-
-    initListeners() {
-        //this.progressCanvas.
-        document.addEventListener("mousemove", (event) => {
-            if (this.settingMode) {
-                let cursorX = event.clientX - this.container.offsetLeft;
-                let cursorY = event.clientY - this.container.offsetTop;
-
-                let cX = this.progressCanvas.width / 2;
-                let cy = this.progressCanvas.height / 2;
-
-                let coX = cursorX;
-                let coY = cursorY;
-
-                let angle = Math.atan2(coY - cy, coX - cX);
-                angle = angle + 0.5 * Math.PI;
-                if (angle < 0) {
-                    angle = angle + Math.PI * 2;
-                }
-                let anglePercentage = angle / (Math.PI * 2);
-                let step = Math.ceil(anglePercentage * this.steps);
-                this.value = step * (this.maxValue - this.minValue) / this.steps;
-                this.drawProgress();
-            }
-        });
-        document.addEventListener("mousedown", (event) => {
-            console.log("mouse mousedown")
-
-            let centerX = this.progressCanvas.width / 2;
-            let centerY = this.progressCanvas.height / 2
-            let cursorX = event.clientX - this.container.offsetLeft;
-            let cursorY = event.clientY - this.container.offsetTop;
-            let distance = Math.sqrt(Math.pow((cursorX - centerX), 2) + Math.pow((cursorY - centerY), 2));
-
-            let startDistance = this.progressInnerRadius - this.progressWidth / 2;
-            let endDistance = this.progressInnerRadius + this.progressWidth / 2;
-            if (distance >= startDistance && distance <= endDistance) {
-                this.settingMode = true;
-            }
-        });
-        document.addEventListener("mouseup", (event) => {
-            console.log("mouse mouseup")
-            this.settingMode = false;
-        });
-        document.addEventListener("mouseleave", (event) => {
-            console.log("mouse mouseleave")
-            this.settingMode = false;
-        });
-
+        this.centerPoint = new Point(
+            this.progressCanvas.width / 2 + this.container.offsetLeft,
+            this.progressCanvas.height / 2 + this.container.offsetTop
+        );
+        this.innerRadius = this.progressInnerRadius - this.progressWidth / 2;
+        this.outerRadius = this.progressInnerRadius + this.progressWidth / 2;
     }
 
 
@@ -188,3 +280,4 @@ class CircularSlider {
         }
     }
 }
+

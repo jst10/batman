@@ -10,4 +10,6 @@ function init() {
     cs = new CircularSlider(panel,{radius:120});
     cs = new CircularSlider(panel,{radius:160});
     cs = new CircularSlider(panel,{radius:200});
+    cs = new CircularSlider(panel,{radius:240});
+    cs = new CircularSlider(panel,{radius:280});
 }
