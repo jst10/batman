@@ -6,7 +6,19 @@ canvas.circular-slider {
     left: 0;
     display: inline-block;
 }
-
+svg.circular-slider {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+    display: inline-block;
+}
+svg circle {
+    transform: rotate(-90deg);
+    transform-origin: 50% 50%;
+    opacity: 0.8;
+}
 span.circular-slider-dot {
     background-color: #ffffff;
     border: 1px solid #b8b8b8;
@@ -15,6 +27,7 @@ span.circular-slider-dot {
     position: absolute;
     cursor: pointer;
 }
+
 
 span.circular-slider-dot:hover {
     background-color: #dcdcdc;

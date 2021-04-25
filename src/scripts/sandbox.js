@@ -4,13 +4,11 @@ window.onload = function () {
 
 function init() {
     console.log("I should initialize everything here...");
-
-    addSliderLegend(750, 40, "#ea5f53", "Health care");
-    addSliderLegend(650, 80, "#ed8c37", "Entertainment");
+    addSliderLegend(750, 200, "#745493", "Transportation");
+    addSliderLegend(650, 160, "#1f90cf", "Food");
     addSliderLegend(500, 120, "#69ae3f", "Insurance");
-    addSliderLegend(800, 160, "#1f90cf", "Food");
-    addSliderLegend(200, 200, "#745493", "Transportation");
-
+    addSliderLegend(800, 80, "#ed8c37", "Entertainment");
+    addSliderLegend(200, 40, "#ea5f53", "Health care");
 }
 
 function addSliderLegend(value, radius, color, label) {
