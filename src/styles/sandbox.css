@@ -2,6 +2,21 @@ h1 {
     text-align: center;
 }
 
-#container {
+.container {
+    display: flex;
+    width: 100%;
+}
+
+#legend-container {
+    width: 30%;
+}
+
+#slider-container {
+    float: right;
     position: relative;
+    background: aliceblue;
+    width: 70%;
+    /*width: 600px;*/
+    height: 600px;
+    margin: auto;
 }

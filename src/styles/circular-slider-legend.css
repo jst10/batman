@@ -1,0 +1,21 @@
+.circular-slider-legend {
+    font-family: sans-serif;
+}
+
+.circular-slider-legend .value-span {
+    font-weight: bold;
+    font-size: 36px;
+}
+
+.circular-slider-legend .color-span {
+    width: 15px;
+    height: 10px;
+    margin-left: 10px;
+    margin-right: 10px;
+    display: inline-block;
+}
+
+.circular-slider-legend .label-spans {
+    font-size: 12px;
+}
+

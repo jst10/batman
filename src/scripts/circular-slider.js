@@ -1,3 +1,6 @@
+const HALF_PI = Math.PI * 0.5;
+const TWO_PI = Math.PI * 2;
+
 class Point {
     constructor(x, y) {
         this.x = x;
@@ -75,11 +78,11 @@ class EventsHandler {
         let cursorX = event.clientX;
         let cursorY = event.clientY;
         let angle = Math.atan2(cursorY - centerY, cursorX - centerX);
-        angle = angle + 0.5 * Math.PI;
+        angle = angle + HALF_PI;
         if (angle < 0) {
-            angle = angle + Math.PI * 2;
+            angle = angle + TWO_PI;
         }
-        let anglePercentage = angle / (Math.PI * 2);
+        let anglePercentage = angle / TWO_PI;
         this.activeEventListener.callback(anglePercentage);
     }
 
@@ -104,16 +107,30 @@ class EventsHandler {
                         this.handleActiveTouchEvent(event);
                         break;
                     }
-
                 }
-
             }
         });
+        document.addEventListener("touchstart", (event) => {
+            console.log("touchmove")
+        });
+        document.addEventListener("touchmove", (event) => {
+            console.log("touchmove")
+        });
+        document.addEventListener("touchcancel", (event) => {
+            console.log("touchcancel")
+        });
+        document.addEventListener("touchend", (event) => {
+            console.log("touchend")
+        });
         document.addEventListener("mouseup", (event) => {
-            this.activeEventListener = undefined;
+            if (this.activeEventListener !== undefined) {
+                this.activeEventListener = undefined;
+            }
         });
         document.addEventListener("mouseleave", (event) => {
-            this.activeEventListener = undefined;
+            if (this.activeEventListener !== undefined) {
+                this.activeEventListener = undefined;
+            }
         });
     }
 }
@@ -147,6 +164,7 @@ class CircularSlider {
         return canvas;
     }
 
+    callback = undefined;
     id = undefined;
     container = undefined;
     progressCanvas = undefined;
@@ -181,11 +199,20 @@ class CircularSlider {
         this.id = CircularSlider.eventHandler.registerEventListener(this.centerPoint, this.innerRadius, this.outerRadius, (anglePercentage) => {
             let step = Math.ceil(anglePercentage * this.steps);
             this.value = step * (this.maxValue - this.minValue) / this.steps;
+            if (this.callback) {
+                this.callback(this.value);
+            }
             this.drawProgress();
+            this.positionDot();
         })
 
         this.drawProgress();
+        this.positionDot();
         this.drawGrid();
+    }
+
+    setCallback(callback) {
+        this.callback = callback;
     }
 
 
@@ -204,6 +231,9 @@ class CircularSlider {
             }
             if (options['maxValue']) {
                 this.maxValue = options['maxValue'];
+            }
+            if (options['value']) {
+                this.value = options['value'];
             }
             // NOTE I changed step int steps, so that end user does not need to calculate this stuff
             if (options['steps']) {
@@ -231,9 +261,9 @@ class CircularSlider {
     drawProgress() {
         let ctx = this.progressCanvas.getContext("2d");
         ctx.clearRect(0, 0, this.progressCanvas.width, this.progressCanvas.height);
-        let startAngle = 0 - (Math.PI / 2);
-        let middleAngle = ((this.value / (this.maxValue - this.minValue)) * 2 * Math.PI) - (Math.PI / 2);
-        let endAngle = 2 * Math.PI - (Math.PI / 2);
+        let startAngle = 0 - HALF_PI;
+        let middleAngle = ((this.value / (this.maxValue - this.minValue)) * TWO_PI) - HALF_PI;
+        let endAngle = TWO_PI - HALF_PI;
         ctx.lineWidth = this.progressWidth;
         ctx.beginPath();
         ctx.arc(this.progressCanvas.width / 2, this.progressCanvas.height / 2, this.progressInnerRadius, startAngle, middleAngle);
@@ -243,19 +273,17 @@ class CircularSlider {
         ctx.arc(this.progressCanvas.width / 2, this.progressCanvas.height / 2, this.progressInnerRadius, middleAngle, endAngle);
         ctx.strokeStyle = this.inactiveProgressColor;
         ctx.stroke();
-        this.positionDot();
-
     }
 
     positionDot() {
-        let middleAngle = 2 * Math.PI - ((this.value / (this.maxValue - this.minValue)) * 2 * Math.PI) - Math.PI
+        let middleAngle = ((this.value / (this.maxValue - this.minValue)) * TWO_PI)-HALF_PI
         let distance = this.progressInnerRadius;
         let offsetX = this.progressCanvas.width / 2 - this.endDot.offsetWidth / 2;
         let offsetY = this.progressCanvas.height / 2 - this.endDot.offsetHeight / 2;
         let x = distance * Math.cos(middleAngle) + offsetX;
         let y = distance * Math.sin(middleAngle) + offsetY;
-        this.endDot.style.top = x + "px";
-        this.endDot.style.left = y + "px";
+        this.endDot.style.top = y + "px";
+        this.endDot.style.left = x + "px";
     }
 
     drawGrid() {
@@ -267,7 +295,7 @@ class CircularSlider {
         ctx.strokeStyle = this.gridColor;
         ctx.lineWidth = 0.5;
         for (let i = 0; i < this.steps; i++) {
-            let angle = ((i / this.steps) * 2 * Math.PI) - (Math.PI / 2);
+            let angle = ((i / this.steps) * TWO_PI) - HALF_PI;
             let startX = startDistance * Math.cos(angle) + offsetX;
             let startY = startDistance * Math.sin(angle) + offsetY;
             let endX = endDistance * Math.cos(angle) + offsetX;
