@@ -14,10 +14,10 @@ svg.circular-slider {
     left: 0;
     display: inline-block;
 }
-svg circle {
+svg circle.progress-circle {
     transform: rotate(-90deg);
     transform-origin: 50% 50%;
-    opacity: 0.8;
+    opacity: 0.6;
 }
 span.circular-slider-dot {
     background-color: #ffffff;
