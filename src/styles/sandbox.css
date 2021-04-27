@@ -14,10 +14,20 @@ h1 {
 #slider-container {
     float: right;
     position: relative;
-    background: aliceblue;
     width: 70%;
-    /*width: 600px;*/
-    height: 600px;
+    height: 400px;
     margin: auto;
 }
 
+body {
+    margin: 0;
+}
+
+body > div {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: linear-gradient(#ffffff, #949699);
+}

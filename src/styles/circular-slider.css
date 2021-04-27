@@ -9,27 +9,32 @@ svg.circular-slider {
 }
 
 
-
 span.circular-slider-dot:hover {
     background-color: #dcdcdc;
 }
 
+svg.circular-slider mask rect {
+    fill: #ffffff;
+}
+
+svg.circular-slider mask line {
+    stroke: rgb(0, 0, 0);
+    stroke-width: 2;
+}
 
 svg.circular-slider .grid-circle {
-
+    fill: none;
 }
 
 svg.circular-slider .progress-circle {
     transform: rotate(-90deg);
     transform-origin: 50% 50%;
-    opacity: 0.6;
+    opacity: 0.75;
+    fill: none;
 }
 
 svg.circular-slider .end-dot-circle {
-    /*background-color: #ffffff;*/
-    /*border: 1px solid #b8b8b8;*/
-    /*border-radius: 50%;*/
-    /*display: inline-block;*/
-    /*position: absolute;*/
-    /*cursor: pointer;*/
+    fill: #ffffff;
+    stroke: #c4c4c4;
 }
+

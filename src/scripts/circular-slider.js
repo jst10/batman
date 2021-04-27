@@ -151,18 +151,25 @@ class CircularSlider {
     gridViewCircle = undefined;
     endDotViewCircle = undefined;
 
-    endDotRadius = 16;
-    inactiveProgressColor = "#d3d4d4";
-    activeProgressColor = CircularSlider.getRandomColor();
+
+    activeProgressColorStart = CircularSlider.getRandomColor();
+    activeProgressColorEnd = CircularSlider.getRandomColor();
     minValue = 0;
     value = 25;
     maxValue = 100;
-    steps = 50;
-    progressWidth = 25;
+    step = 50;
     radius = 170;
+
+
+    inactiveProgressColor = "#cfd0d1";
+    endDotRadius = 9;
+    progressWidth = 18;
     lockRadius = false;
 
+    width = 0;
+    height = 0;
     valueRangeSize = 0;
+    steps = undefined;
     absoluteCenterPoint = undefined;
     relativeCenterPoint = undefined;
     innerRadius = undefined;
@@ -207,7 +214,7 @@ class CircularSlider {
                 this.lockRadius = true;
             }
             if (options['color']) {
-                this.activeProgressColor = options['color'];
+                this.activeProgressColorStart = options['color'];
             }
             if (options['minValue']) {
                 this.minValue = options['minValue'];
@@ -218,15 +225,21 @@ class CircularSlider {
             if (options['value']) {
                 this.value = options['value'];
             }
-            // NOTE I changed step int steps, so that end user does not need to calculate this stuff
-            if (options['steps']) {
-                this.steps = options['steps'];
+            if (options['step']) {
+                this.step = options['step'];
             }
         }
     }
 
     calculateSomeStuff() {
         this.valueRangeSize = Math.abs(this.maxValue - this.minValue);
+        this.activeProgressColorEnd = shadeColor(this.activeProgressColorStart, 80);
+        this.steps = this.valueRangeSize / this.step;
+        this.innerRadius = this.radius - this.progressWidth / 2;
+        this.outerRadius = this.radius + this.progressWidth / 2;
+        this.height = this.width = this.outerRadius * 2;
+        this.circumference = this.radius * TWO_PI;
+
         this.relativeCenterPoint = new Point(
             this.container.offsetWidth / 2,
             this.container.offsetHeight / 2
@@ -235,9 +248,7 @@ class CircularSlider {
             this.relativeCenterPoint.x + this.container.offsetLeft,
             this.relativeCenterPoint.y + this.container.offsetTop
         );
-        this.innerRadius = this.radius - this.progressWidth / 2;
-        this.outerRadius = this.radius + this.progressWidth / 2;
-        this.circumference = this.radius * TWO_PI;
+
     }
 
 
@@ -256,7 +267,6 @@ class CircularSlider {
         rect.setAttribute("y", "0");
         rect.setAttribute("width", this.container.offsetWidth);
         rect.setAttribute("height", this.container.offsetHeight);
-        rect.setAttribute("fill", "#FFFFFF");
         mask.appendChild(rect);
 
         for (let i = 0; i < this.steps; i++) {
@@ -270,7 +280,6 @@ class CircularSlider {
             lineView.setAttribute("y1", startY);
             lineView.setAttribute("x2", endX);
             lineView.setAttribute("y2", endY);
-            lineView.setAttribute("style", "stroke:rgb(0,0,0);stroke-width:3");
             mask.appendChild(lineView);
 
         }
@@ -281,7 +290,6 @@ class CircularSlider {
         this.gridViewCircle.classList.add('grid-circle');
         this.gridViewCircle.setAttribute("r", `${this.radius}`);
         this.gridViewCircle.setAttribute("stroke-width", this.progressWidth);
-        this.gridViewCircle.setAttribute("fill", "transparent");
         this.gridViewCircle.setAttribute("cx", this.relativeCenterPoint.x);
         this.gridViewCircle.setAttribute("cy", this.relativeCenterPoint.y);
         this.gridViewCircle.setAttribute("stroke", this.inactiveProgressColor);
@@ -289,20 +297,41 @@ class CircularSlider {
         this.circularSliderViewSvg.appendChild(this.gridViewCircle);
 
 
+        // TODO make something more similar to the conic gradient
+        let linearGradient = document.createElementNS(SVG_NS, 'linearGradient');
+        linearGradient.setAttribute("id", "gradient" + this.id);
+        linearGradient.setAttribute("x1", "0%");
+        linearGradient.setAttribute("y1", "0%");
+        linearGradient.setAttribute("x2", "100%");
+        linearGradient.setAttribute("y2", "100%");
+
+        let linearGradientStop = document.createElementNS(SVG_NS, 'stop');
+        linearGradientStop.setAttribute("offset", "0%");
+        linearGradientStop.setAttribute("stop-color", this.activeProgressColorEnd);
+        linearGradient.appendChild(linearGradientStop);
+
+        linearGradientStop = document.createElementNS(SVG_NS, 'stop');
+        linearGradientStop.setAttribute("offset", "100%");
+        linearGradientStop.setAttribute("stop-color", this.activeProgressColorStart);
+        linearGradient.appendChild(linearGradientStop);
+
+        this.circularSliderViewSvg.appendChild(linearGradient);
+
+
         this.progressViewCircle = document.createElementNS(SVG_NS, 'circle');
         this.progressViewCircle.classList.add('progress-circle');
         this.progressViewCircle.setAttribute("r", `${this.radius}`);
         this.progressViewCircle.setAttribute("stroke-width", this.progressWidth);
-        this.progressViewCircle.setAttribute("fill", "transparent");
         this.progressViewCircle.setAttribute("cx", this.relativeCenterPoint.x);
         this.progressViewCircle.setAttribute("cy", this.relativeCenterPoint.y);
-        this.progressViewCircle.setAttribute("stroke", this.activeProgressColor);
+        this.progressViewCircle.setAttribute("stroke", `url(#gradient${this.id})`);
+        // this.progressViewCircle.style.stroke = this.activeProgressColorStart;
+
         this.progressViewCircle.style.strokeDasharray = `${this.circumference} ${this.circumference}`;
         this.circularSliderViewSvg.appendChild(this.progressViewCircle);
 
         this.endDotViewCircle = document.createElementNS(SVG_NS, 'circle');
         this.endDotViewCircle.classList.add('end-dot-circle');
-        this.endDotViewCircle.setAttribute("fill", "#000000");
         this.endDotViewCircle.setAttribute("r", this.endDotRadius);
         this.circularSliderViewSvg.appendChild(this.endDotViewCircle);
     }
