@@ -166,6 +166,8 @@ class CircularSlider {
     progressWidth = 18;
     lockRadius = false;
 
+    offsetTop = 0;
+    offsetLeft = 0;
     width = 0;
     height = 0;
     valueRangeSize = 0;
@@ -181,12 +183,19 @@ class CircularSlider {
     constructor(container, options) {
         this.id = CircularSlider.nextId++;
         this.container = container;
+
+
         this.setValuesFromOptions(options);
-        this.calculateSomeStuff();
+        this.calculateNotContainerRelatedStuff();
         this.createViews();
+        this.registerResizeObserver();
+        this.increaseContainerSizeIfNeeded();
+        this.calculateContainerRelatedStuff();
+        this.positionMainView();
         this.drawProgressDot();
 
-        this.id = CircularSlider.eventHandler.registerEventListener(this.id, this.absoluteCenterPoint, this.innerRadius, this.outerRadius, (anglePercentage) => {
+
+        CircularSlider.eventHandler.registerEventListener(this.id, this.absoluteCenterPoint, this.innerRadius, this.outerRadius, (anglePercentage) => {
             let step = Math.ceil(anglePercentage * this.steps);
             this.value = step * (this.maxValue - this.minValue) / this.steps;
             if (this.callback) {
@@ -200,11 +209,21 @@ class CircularSlider {
         this.callback = callback;
     }
 
+
+    positionMainView() {
+        this.circularSliderViewSvg.style.top = `${this.offsetTop}`;
+        this.circularSliderViewSvg.style.left = `${this.offsetLeft}`;
+    }
+
+    updateEventListener() {
+        CircularSlider.eventHandler.updateCenterPointOfEventListener(this.id, this.absoluteCenterPoint);
+    }
+
+
     drawProgressDot() {
         this.drawProgressSvg();
         this.positionDotSvgCircle();
     }
-
 
     setValuesFromOptions(options) {
         this.lockRadius = false;
@@ -231,29 +250,56 @@ class CircularSlider {
         }
     }
 
-    calculateSomeStuff() {
+    calculateNotContainerRelatedStuff() {
         this.valueRangeSize = Math.abs(this.maxValue - this.minValue);
-        this.activeProgressColorEnd = shadeColor(this.activeProgressColorStart, 80);
         this.steps = this.valueRangeSize / this.step;
+        this.activeProgressColorEnd = shadeColor(this.activeProgressColorStart, 80);
+        this.circumference = this.radius * TWO_PI;
         this.innerRadius = this.radius - this.progressWidth / 2;
         this.outerRadius = this.radius + this.progressWidth / 2;
         this.height = this.width = this.outerRadius * 2;
-        this.circumference = this.radius * TWO_PI;
-
         this.relativeCenterPoint = new Point(
-            this.container.offsetWidth / 2,
-            this.container.offsetHeight / 2
+            this.width / 2,
+            this.height / 2
         );
-        this.absoluteCenterPoint = new Point(
-            this.relativeCenterPoint.x + this.container.offsetLeft,
-            this.relativeCenterPoint.y + this.container.offsetTop
-        );
+    }
 
+    registerResizeObserver() {
+        // TODO optimize like with mouse listeners only 1 per container!
+        const resizeObserver = new ResizeObserver(entries => {
+            this.calculateContainerRelatedStuff();
+            this.positionMainView();
+            this.updateEventListener();
+        });
+        resizeObserver.observe(this.container);
+    }
+
+    increaseContainerSizeIfNeeded() {
+        let containerBoundingRect = this.container.getBoundingClientRect();
+        if (containerBoundingRect.width < this.width) {
+            this.container.style.width = this.width + "px";
+        }
+        if (containerBoundingRect.height < this.height) {
+            this.container.style.height = this.height + "px";
+        }
+    }
+
+    calculateContainerRelatedStuff() {
+        const containerBoundingRect = this.container.getBoundingClientRect();
+        this.offsetTop = (containerBoundingRect.height - this.height) / 2;
+        this.offsetLeft = (containerBoundingRect.width - this.width) / 2;
+
+        this.absoluteCenterPoint = new Point(
+            this.relativeCenterPoint.x + containerBoundingRect.x + this.offsetLeft,
+            this.relativeCenterPoint.y + containerBoundingRect.y + this.offsetTop
+        );
     }
 
 
     createViews() {
         this.circularSliderViewSvg = document.createElementNS(SVG_NS, 'svg');
+        this.circularSliderViewSvg.setAttribute("width", this.width);
+        this.circularSliderViewSvg.setAttribute("height", this.height);
         this.circularSliderViewSvg.classList.add("circular-slider");
         this.container.appendChild(this.circularSliderViewSvg);
 
@@ -265,8 +311,8 @@ class CircularSlider {
         let rect = document.createElementNS(SVG_NS, 'rect');
         rect.setAttribute("x", "0");
         rect.setAttribute("y", "0");
-        rect.setAttribute("width", this.container.offsetWidth);
-        rect.setAttribute("height", this.container.offsetHeight);
+        rect.setAttribute("width", this.width);
+        rect.setAttribute("height", this.height);
         mask.appendChild(rect);
 
         for (let i = 0; i < this.steps; i++) {
