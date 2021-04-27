@@ -143,21 +143,14 @@ class CircularSlider {
         return "#" + Math.floor(Math.random() * 16777215).toString(16);
     }
 
-    static produceFullSizeSvg(container, classNames, zIndex) {
-        let svg = document.createElementNS(SVG_NS, 'svg');
-        svg.classList.add(classNames);
-        svg.style.zIndex = zIndex;
-        container.appendChild(svg);
-        return svg;
-    }
-
-    callback = undefined;
     id = undefined;
+    callback = undefined;
     container = undefined;
-    progressSvg = undefined;
-    progressSvgCircle = undefined;
-    progressGridCircle = undefined;
-    endDotSvgCircle = undefined;
+    circularSliderViewSvg = undefined;
+    progressViewCircle = undefined;
+    gridViewCircle = undefined;
+    endDotViewCircle = undefined;
+
     endDotRadius = 16;
     inactiveProgressColor = "#d3d4d4";
     activeProgressColor = CircularSlider.getRandomColor();
@@ -166,14 +159,15 @@ class CircularSlider {
     maxValue = 100;
     steps = 50;
     progressWidth = 25;
-    progressInnerRadius = 170;
+    radius = 170;
     lockRadius = false;
-    settingMode = false;
 
-
-    centerPoint = undefined;
+    valueRangeSize = 0;
+    absoluteCenterPoint = undefined;
+    relativeCenterPoint = undefined;
     innerRadius = undefined;
     outerRadius = undefined;
+    circumference = undefined;
 
 
     // NOTE I make options optional, you do not need to provide them
@@ -183,7 +177,9 @@ class CircularSlider {
         this.setValuesFromOptions(options);
         this.calculateSomeStuff();
         this.createViews();
-        this.id = CircularSlider.eventHandler.registerEventListener(this.id, this.centerPoint, this.innerRadius, this.outerRadius, (anglePercentage) => {
+        this.drawProgressDot();
+
+        this.id = CircularSlider.eventHandler.registerEventListener(this.id, this.absoluteCenterPoint, this.innerRadius, this.outerRadius, (anglePercentage) => {
             let step = Math.ceil(anglePercentage * this.steps);
             this.value = step * (this.maxValue - this.minValue) / this.steps;
             if (this.callback) {
@@ -191,9 +187,6 @@ class CircularSlider {
             }
             this.drawProgressDot();
         })
-
-        this.drawProgressDot();
-        // this.drawGrid();
     }
 
     setCallback(callback) {
@@ -210,7 +203,7 @@ class CircularSlider {
         this.lockRadius = false;
         if (options) {
             if (options['radius']) {
-                this.progressInnerRadius = options['radius'];
+                this.radius = options['radius'];
                 this.lockRadius = true;
             }
             if (options['color']) {
@@ -233,133 +226,102 @@ class CircularSlider {
     }
 
     calculateSomeStuff() {
-        this.centerPoint = new Point(
-            this.container.offsetWidth / 2 + this.container.offsetLeft,
-            this.container.offsetHeight / 2 + this.container.offsetTop
+        this.valueRangeSize = Math.abs(this.maxValue - this.minValue);
+        this.relativeCenterPoint = new Point(
+            this.container.offsetWidth / 2,
+            this.container.offsetHeight / 2
         );
-        this.innerRadius = this.progressInnerRadius - this.progressWidth / 2;
-        this.outerRadius = this.progressInnerRadius + this.progressWidth / 2;
+        this.absoluteCenterPoint = new Point(
+            this.relativeCenterPoint.x + this.container.offsetLeft,
+            this.relativeCenterPoint.y + this.container.offsetTop
+        );
+        this.innerRadius = this.radius - this.progressWidth / 2;
+        this.outerRadius = this.radius + this.progressWidth / 2;
+        this.circumference = this.radius * TWO_PI;
     }
 
 
     createViews() {
-        this.progressSvg = CircularSlider.produceFullSizeSvg(this.container, "circular-slider", 10);
+        this.circularSliderViewSvg = document.createElementNS(SVG_NS, 'svg');
+        this.circularSliderViewSvg.classList.add("circular-slider");
+        this.container.appendChild(this.circularSliderViewSvg);
 
         let defsView = document.createElementNS(SVG_NS, 'defs');
-        // let clipPath = document.createElementNS(SVG_NS, 'clipPath');
         let mask = document.createElementNS(SVG_NS, 'mask');
-        mask.setAttributeNS(null, "id", "mask" + this.id);
-        mask.setAttributeNS(null, "maskUnits", "userSpaceOnUse");
+        mask.setAttribute("id", "mask" + this.id);
+        mask.setAttribute("maskUnits", "userSpaceOnUse");
 
         let rect = document.createElementNS(SVG_NS, 'rect');
-        rect.setAttributeNS(null, "x", 0);
-        rect.setAttributeNS(null, "y", 0);
-        rect.setAttributeNS(null, "width", this.container.offsetWidth);
-        rect.setAttributeNS(null, "height", this.container.offsetHeight);
-        rect.setAttributeNS(null, "fill", "#FFFFFF");
+        rect.setAttribute("x", "0");
+        rect.setAttribute("y", "0");
+        rect.setAttribute("width", this.container.offsetWidth);
+        rect.setAttribute("height", this.container.offsetHeight);
+        rect.setAttribute("fill", "#FFFFFF");
         mask.appendChild(rect);
-
-        let startDistance = this.progressInnerRadius - this.progressWidth / 2;
-        let endDistance = this.progressInnerRadius + this.progressWidth / 2;
-        let offsetX = this.container.offsetWidth / 2;
-        let offsetY = this.container.offsetHeight / 2;
 
         for (let i = 0; i < this.steps; i++) {
             let angle = ((i / this.steps) * TWO_PI) - HALF_PI;
-            let startX = startDistance * Math.cos(angle) + offsetX;
-            let startY = startDistance * Math.sin(angle) + offsetY;
-            let endX = endDistance * Math.cos(angle) + offsetX;
-            let endY = endDistance * Math.sin(angle) + offsetY;
-            // let lineView = document.createElementNS(SVG_NS, 'circle');
-            // lineView.setAttributeNS(null, "cx", 200);
-            // lineView.setAttributeNS(null, "cy", 200);
-            // // lineView.setAttributeNS(null, "fill", "#FFFFFF");
-            // lineView.setAttributeNS(null, "fill", "#000000");
-            // lineView.setAttributeNS(null, "r", 52);
-
+            let startX = this.innerRadius * Math.cos(angle) + this.relativeCenterPoint.x;
+            let startY = this.innerRadius * Math.sin(angle) + this.relativeCenterPoint.y;
+            let endX = this.outerRadius * Math.cos(angle) + this.relativeCenterPoint.x;
+            let endY = this.outerRadius * Math.sin(angle) + this.relativeCenterPoint.y;
             let lineView = document.createElementNS(SVG_NS, 'line');
-            lineView.setAttributeNS(null, "x1", startX);
-            lineView.setAttributeNS(null, "y1", startY);
-            lineView.setAttributeNS(null, "x2", endX);
-            lineView.setAttributeNS(null, "y2", endY);
-            lineView.setAttributeNS(null, "style", "stroke:rgb(0,0,0);stroke-width:3");
+            lineView.setAttribute("x1", startX);
+            lineView.setAttribute("y1", startY);
+            lineView.setAttribute("x2", endX);
+            lineView.setAttribute("y2", endY);
+            lineView.setAttribute("style", "stroke:rgb(0,0,0);stroke-width:3");
             mask.appendChild(lineView);
 
         }
         defsView.appendChild(mask);
-        this.progressSvg.appendChild(defsView);
+        this.circularSliderViewSvg.appendChild(defsView);
 
-        let circumference = (this.innerRadius + this.progressWidth / 2) * 2 * Math.PI;
-        this.progressGridCircle = document.createElementNS(SVG_NS, 'circle');
-        this.progressGridCircle.setAttributeNS(null, "r", this.innerRadius + this.progressWidth / 2);
-        this.progressGridCircle.setAttributeNS(null, "stroke-width", this.progressWidth);
-        this.progressGridCircle.setAttributeNS(null, "fill", "transparent");
-        this.progressGridCircle.setAttributeNS(null, "cx", this.container.offsetWidth / 2);
-        this.progressGridCircle.setAttributeNS(null, "cy", this.container.offsetHeight / 2);
-        this.progressGridCircle.setAttributeNS(null, "stroke", this.inactiveProgressColor);
-        this.progressGridCircle.setAttributeNS(null, "mask", "url(#mask" + this.id + ")");
-        this.progressGridCircle.style.zIndex = 8;
-        this.progressSvg.appendChild(this.progressGridCircle);
-
-
-        this.progressSvgCircle = document.createElementNS(SVG_NS, 'circle');
-        this.progressSvgCircle.classList.add('progress-circle');
-        this.progressSvgCircle.setAttributeNS(null, "r", this.innerRadius + this.progressWidth / 2);
-        this.progressSvgCircle.setAttributeNS(null, "stroke-width", this.progressWidth);
-        this.progressSvgCircle.setAttributeNS(null, "fill", "transparent");
-        this.progressSvgCircle.setAttributeNS(null, "cx", this.container.offsetWidth / 2);
-        this.progressSvgCircle.setAttributeNS(null, "cy", this.container.offsetHeight / 2);
-        this.progressSvgCircle.setAttributeNS(null, "stroke", this.activeProgressColor);
-        this.progressSvgCircle.style.zIndex = 10;
-        this.progressSvg.appendChild(this.progressSvgCircle);
+        this.gridViewCircle = document.createElementNS(SVG_NS, 'circle');
+        this.gridViewCircle.classList.add('grid-circle');
+        this.gridViewCircle.setAttribute("r", `${this.radius}`);
+        this.gridViewCircle.setAttribute("stroke-width", this.progressWidth);
+        this.gridViewCircle.setAttribute("fill", "transparent");
+        this.gridViewCircle.setAttribute("cx", this.relativeCenterPoint.x);
+        this.gridViewCircle.setAttribute("cy", this.relativeCenterPoint.y);
+        this.gridViewCircle.setAttribute("stroke", this.inactiveProgressColor);
+        this.gridViewCircle.setAttribute("mask", `url(#mask${this.id})`);
+        this.circularSliderViewSvg.appendChild(this.gridViewCircle);
 
 
-        this.endDotSvgCircle = document.createElementNS(SVG_NS, 'circle');
-        this.endDotSvgCircle.setAttributeNS(null, "fill", "#000000");
-        this.endDotSvgCircle.setAttributeNS(null, "r", this.endDotRadius);
-        this.progressSvg.appendChild(this.endDotSvgCircle);
+        this.progressViewCircle = document.createElementNS(SVG_NS, 'circle');
+        this.progressViewCircle.classList.add('progress-circle');
+        this.progressViewCircle.setAttribute("r", `${this.radius}`);
+        this.progressViewCircle.setAttribute("stroke-width", this.progressWidth);
+        this.progressViewCircle.setAttribute("fill", "transparent");
+        this.progressViewCircle.setAttribute("cx", this.relativeCenterPoint.x);
+        this.progressViewCircle.setAttribute("cy", this.relativeCenterPoint.y);
+        this.progressViewCircle.setAttribute("stroke", this.activeProgressColor);
+        this.progressViewCircle.style.strokeDasharray = `${this.circumference} ${this.circumference}`;
+        this.circularSliderViewSvg.appendChild(this.progressViewCircle);
 
+        this.endDotViewCircle = document.createElementNS(SVG_NS, 'circle');
+        this.endDotViewCircle.classList.add('end-dot-circle');
+        this.endDotViewCircle.setAttribute("fill", "#000000");
+        this.endDotViewCircle.setAttribute("r", this.endDotRadius);
+        this.circularSliderViewSvg.appendChild(this.endDotViewCircle);
     }
 
+    getValuePartOfRange() {
+        return (Math.abs(this.value - this.minValue) / (this.valueRangeSize));
+    }
 
     drawProgressSvg() {
-        let circumference = (this.innerRadius + this.progressWidth / 2) * 2 * Math.PI;
-        this.progressSvgCircle.style.strokeDasharray = circumference + " " + circumference;
-        const offset = circumference - (this.value / (this.maxValue - this.minValue)) * circumference;
-        this.progressSvgCircle.style.strokeDashoffset = offset;
+        const offset = this.circumference - this.getValuePartOfRange() * this.circumference;
+        this.progressViewCircle.style.strokeDashoffset = `${offset}`;
     }
 
     positionDotSvgCircle() {
-        let middleAngle = ((this.value / (this.maxValue - this.minValue)) * TWO_PI) - HALF_PI
-        let distance = this.innerRadius + this.progressWidth / 2;
-        let offsetX = this.container.offsetWidth / 2;
-        let offsetY = this.container.offsetHeight / 2;
-        let x = distance * Math.cos(middleAngle) + offsetX;
-        let y = distance * Math.sin(middleAngle) + offsetY;
-        this.endDotSvgCircle.setAttributeNS(null, "cx", x);
-        this.endDotSvgCircle.setAttributeNS(null, "cy", y);
-    }
-
-    drawGrid() {
-        let ctx = this.gridCanvas.getContext("2d");
-        let startDistance = this.progressInnerRadius - this.progressWidth / 2;
-        let endDistance = this.progressInnerRadius + this.progressWidth / 2;
-        let offsetX = this.container.offsetWidth / 2;
-        let offsetY = this.container.offsetHeight / 2;
-        ctx.strokeStyle = this.gridColor;
-        ctx.lineWidth = 0.5;
-        for (let i = 0; i < this.steps; i++) {
-            let angle = ((i / this.steps) * TWO_PI) - HALF_PI;
-            let startX = startDistance * Math.cos(angle) + offsetX;
-            let startY = startDistance * Math.sin(angle) + offsetY;
-            let endX = endDistance * Math.cos(angle) + offsetX;
-            let endY = endDistance * Math.sin(angle) + offsetY;
-            ctx.beginPath();
-            ctx.moveTo(startX, startY);
-            ctx.lineTo(endX, endY);
-            ctx.stroke();
-            ctx.stroke();
-        }
+        let middleAngle = this.getValuePartOfRange() * TWO_PI - HALF_PI
+        let x = this.radius * Math.cos(middleAngle) + this.relativeCenterPoint.x;
+        let y = this.radius * Math.sin(middleAngle) + this.relativeCenterPoint.y;
+        this.endDotViewCircle.setAttribute("cx", x);
+        this.endDotViewCircle.setAttribute("cy", y);
     }
 }
 

@@ -1,11 +1,4 @@
-canvas.circular-slider {
-    width: 100%;
-    height: 100%;
-    position: absolute;
-    top: 0;
-    left: 0;
-    display: inline-block;
-}
+
 svg.circular-slider {
     width: 100%;
     height: 100%;
@@ -14,21 +7,29 @@ svg.circular-slider {
     left: 0;
     display: inline-block;
 }
-svg circle.progress-circle {
-    transform: rotate(-90deg);
-    transform-origin: 50% 50%;
-    opacity: 0.6;
-}
-span.circular-slider-dot {
-    background-color: #ffffff;
-    border: 1px solid #b8b8b8;
-    border-radius: 50%;
-    display: inline-block;
-    position: absolute;
-    cursor: pointer;
-}
+
 
 
 span.circular-slider-dot:hover {
     background-color: #dcdcdc;
+}
+
+
+svg.circular-slider .grid-circle {
+
+}
+
+svg.circular-slider .progress-circle {
+    transform: rotate(-90deg);
+    transform-origin: 50% 50%;
+    opacity: 0.6;
+}
+
+svg.circular-slider .end-dot-circle {
+    /*background-color: #ffffff;*/
+    /*border: 1px solid #b8b8b8;*/
+    /*border-radius: 50%;*/
+    /*display: inline-block;*/
+    /*position: absolute;*/
+    /*cursor: pointer;*/
 }
