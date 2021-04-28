@@ -24,9 +24,10 @@ class EventsListener {
 }
 
 class EventsHandler {
+    CURSOR_IDENTIFIER = "cursor";
     idToEventListener = {}
     centerPointToListOfEventListeners = {}
-    activeEventListener = undefined;
+    activeEventListeners = {};
 
     constructor() {
         this.init();
@@ -71,66 +72,83 @@ class EventsHandler {
         this.insertEventListenerIntoCenterPointDict(eventListener);
     }
 
-    handleActiveTouchEvent(event) {
-        let centerX = this.activeEventListener.centerPoint.x;
-        let centerY = this.activeEventListener.centerPoint.y;
-        let cursorX = event.clientX;
-        let cursorY = event.clientY;
-        let angle = Math.atan2(cursorY - centerY, cursorX - centerX);
+
+    init() {
+        document.addEventListener("mousedown", (event) => {
+            this.handleStartTouchCursorEvent(event, this.CURSOR_IDENTIFIER, event.clientX, event.clientY);
+        });
+        document.addEventListener("mousemove", (event) => {
+            this.handleMoveTouchCursorEvent(event, this.CURSOR_IDENTIFIER, event.clientX, event.clientY);
+        });
+        document.addEventListener("mouseleave", (event) => {
+            this.handleEndTouchCursorEvent(event, this.CURSOR_IDENTIFIER);
+        });
+        document.addEventListener("mouseup", (event) => {
+            this.handleEndTouchCursorEvent(event, this.CURSOR_IDENTIFIER);
+        });
+        document.addEventListener("touchstart", (event) => {
+            for (let i = 0; i < event.touches.length; i++) {
+                this.handleStartTouchCursorEvent(event, event.touches[i].identifier, event.touches[i].clientX, event.touches[i].clientY);
+            }
+        }, {passive: false});
+        document.addEventListener("touchmove", (event) => {
+            for (let i = 0; i < event.touches.length; i++) {
+                this.handleMoveTouchCursorEvent(event, event.touches[i].identifier, event.touches[i].clientX, event.touches[i].clientY);
+            }
+        }, {passive: false});
+        document.addEventListener("touchcancel", (event) => {
+            for (let i = 0; i < event.changedTouches.length; i++) {
+                this.handleEndTouchCursorEvent(event, event.changedTouches[i].identifier);
+            }
+        }, {passive: false});
+        document.addEventListener("touchend", (event) => {
+            for (let i = 0; i < event.changedTouches.length; i++) {
+                this.handleEndTouchCursorEvent(event, event.changedTouches[i].identifier);
+            }
+        }, {passive: false});
+    }
+
+    handleStartTouchCursorEvent(event, identifier, clientX, clientY) {
+        for (let centerPoint in this.centerPointToListOfEventListeners) {
+            let eventListeners = this.centerPointToListOfEventListeners[centerPoint];
+            for (let i = 0; i < eventListeners.length; i++) {
+                let eventListener = eventListeners[i];
+                let distance = Math.sqrt(Math.pow((clientX - eventListener.centerPoint.x), 2) + Math.pow((clientY - eventListener.centerPoint.y), 2));
+                if (distance >= eventListener.innerRadius && distance <= eventListener.outerRadius) {
+                    this.activeEventListeners[identifier] = eventListener;
+                    event.preventDefault();
+                    this.processActiveTouchEvent(identifier, clientX, clientY);
+                    break;
+                }
+            }
+        }
+
+    }
+
+    handleMoveTouchCursorEvent(event, identifier, clientX, clientY) {
+        if (this.activeEventListeners[identifier]) {
+            event.preventDefault();
+            this.processActiveTouchEvent(identifier, clientX, clientY);
+        }
+    }
+
+    handleEndTouchCursorEvent(event, identifier) {
+        if (this.activeEventListeners[identifier]) {
+            event.preventDefault();
+            delete this.activeEventListeners[identifier];
+        }
+    }
+
+    processActiveTouchEvent(identifier, clientX, clientY) {
+        let centerX = this.activeEventListeners[identifier].centerPoint.x;
+        let centerY = this.activeEventListeners[identifier].centerPoint.y;
+        let angle = Math.atan2(clientY - centerY, clientX - centerX);
         angle = angle + HALF_PI;
         if (angle < 0) {
             angle = angle + TWO_PI;
         }
         let anglePercentage = angle / TWO_PI;
-        this.activeEventListener.callback(anglePercentage);
-    }
-
-    init() {
-        document.addEventListener("mousemove", (event) => {
-            if (this.activeEventListener !== undefined) {
-                this.handleActiveTouchEvent(event);
-            }
-        });
-        document.addEventListener("mousedown", (event) => {
-            for (let centerPoint in this.centerPointToListOfEventListeners) {
-                let eventListeners = this.centerPointToListOfEventListeners[centerPoint];
-                for (let i = 0; i < eventListeners.length; i++) {
-                    let eventListener = eventListeners[i];
-                    let centerX = eventListener.centerPoint.x;
-                    let centerY = eventListener.centerPoint.y;
-                    let cursorX = event.clientX;
-                    let cursorY = event.clientY;
-                    let distance = Math.sqrt(Math.pow((cursorX - centerX), 2) + Math.pow((cursorY - centerY), 2));
-                    if (distance >= eventListener.innerRadius && distance <= eventListener.outerRadius) {
-                        this.activeEventListener = eventListener;
-                        this.handleActiveTouchEvent(event);
-                        break;
-                    }
-                }
-            }
-        });
-        document.addEventListener("touchstart", (event) => {
-            console.log("touchmove")
-        });
-        document.addEventListener("touchmove", (event) => {
-            console.log("touchmove")
-        });
-        document.addEventListener("touchcancel", (event) => {
-            console.log("touchcancel")
-        });
-        document.addEventListener("touchend", (event) => {
-            console.log("touchend")
-        });
-        document.addEventListener("mouseup", (event) => {
-            if (this.activeEventListener !== undefined) {
-                this.activeEventListener = undefined;
-            }
-        });
-        document.addEventListener("mouseleave", (event) => {
-            if (this.activeEventListener !== undefined) {
-                this.activeEventListener = undefined;
-            }
-        });
+        this.activeEventListeners[identifier].callback(anglePercentage);
     }
 }
 
@@ -162,7 +180,7 @@ class CircularSlider {
 
 
     inactiveProgressColor = "#cfd0d1";
-    endDotRadius = 9;
+    endDotRadius = 11;
     progressWidth = 18;
     lockRadius = false;
 
@@ -266,12 +284,12 @@ class CircularSlider {
 
     registerResizeObserver() {
         // TODO optimize like with mouse listeners only 1 per container!
-        const resizeObserver = new ResizeObserver(entries => {
+        let resizeObserver = new ResizeObserver(entries => {
             this.calculateContainerRelatedStuff();
             this.positionMainView();
             this.updateEventListener();
         });
-        resizeObserver.observe(this.container);
+        resizeObserver.observe(document.body);
     }
 
     increaseContainerSizeIfNeeded() {
