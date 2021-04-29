@@ -25,7 +25,7 @@ svg.circular-slider .grid-circle {
 svg.circular-slider .progress-circle {
     transform: rotate(-90deg);
     transform-origin: 50% 50%;
-    opacity: 0.75;
+    opacity: 0.60;
     fill: none;
 }
 

@@ -5,14 +5,15 @@
 .circular-slider-legend .value-span {
     font-weight: bold;
     font-size: 36px;
+    min-width: 100px;
 }
 
 .circular-slider-legend .color-span {
-    width: 15px;
+    width: 16px;
     height: 10px;
     margin-left: 10px;
     margin-right: 10px;
-    opacity: 0.75;
+    opacity: 0.6;
     display: inline-block;
 }
 

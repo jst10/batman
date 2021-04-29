@@ -4,11 +4,11 @@ window.onload = function () {
 
 
 function init() {
-    addSliderLegend(750, 10, 145, "#4c0f7d", "Transportation");//#61467b
-    addSliderLegend(650, 10, 119, "#0050c9", "Food");//#167fc3
-    addSliderLegend(500, 20, 93, "#349301", "Insurance");//#55a328
-    addSliderLegend(800, 20, 67, "#dc700a", "Entertainment")//##e78a37
-    addSliderLegend(200, 25, 41, "#e2281a", "Health care")//##ee6054
+    addSliderLegend(750, 10, 145, "#2d0050", "Transportation");//#61467b
+    addSliderLegend(650, 10, 119, "#003a93", "Food");//#167fc3
+    addSliderLegend(500, 10, 93, "#2a7800", "Insurance");//#55a328
+    addSliderLegend(800, 20, 67, "#d96a01", "Entertainment")//##e78a37
+    addSliderLegend(200, 25, 41, "#cb1002", "Health care")//##ee6054
 }
 
 function addSliderLegend(value, step, radius, color, label) {

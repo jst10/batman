@@ -28,13 +28,16 @@ class EventsHandler {
     idToEventListener = {}
     centerPointToListOfEventListeners = {}
     activeEventListeners = {};
+    resizeObserver = undefined;
+    onResizeCallbacks = [];
 
     constructor() {
         this.init();
     }
 
-    registerEventListener(id, centerPoint, innerRadius, outerRadius, callback) {
-        let eventListener = new EventsListener(id, centerPoint, innerRadius, outerRadius, callback);
+    registerEventListener(id, centerPoint, innerRadius, outerRadius, pointerTouchEventCallback, resizeEventCallback) {
+        let eventListener = new EventsListener(id, centerPoint, innerRadius, outerRadius, pointerTouchEventCallback);
+        this.onResizeCallbacks.push(resizeEventCallback);
         this.idToEventListener[eventListener.id] = eventListener;
         this.insertEventListenerIntoCenterPointDict(eventListener);
     }
@@ -74,6 +77,15 @@ class EventsHandler {
 
 
     init() {
+        document.addEventListener("DOMContentLoaded", (event) => {
+            this.resizeObserver = new ResizeObserver(entries => {
+                for (let i = 0; i < this.onResizeCallbacks.length; i++) {
+                    this.onResizeCallbacks[i]();
+                }
+            });
+            this.resizeObserver.observe(document.body);
+        });
+
         document.addEventListener("mousedown", (event) => {
             this.handleStartTouchCursorEvent(event, this.CURSOR_IDENTIFIER, event.clientX, event.clientY);
         });
@@ -206,22 +218,36 @@ class CircularSlider {
         this.setValuesFromOptions(options);
         this.calculateNotContainerRelatedStuff();
         this.createViews();
-        this.registerResizeObserver();
         this.increaseContainerSizeIfNeeded();
         this.calculateContainerRelatedStuff();
         this.positionMainView();
         this.drawProgressDot();
 
 
-        CircularSlider.eventHandler.registerEventListener(this.id, this.absoluteCenterPoint, this.innerRadius, this.outerRadius, (anglePercentage) => {
-            let step = Math.ceil(anglePercentage * this.steps);
-            this.value = step * (this.maxValue - this.minValue) / this.steps;
-            if (this.callback) {
-                this.callback(this.value);
-            }
-            this.drawProgressDot();
-        })
+        CircularSlider.eventHandler.registerEventListener(
+            this.id,
+            this.absoluteCenterPoint,
+            this.innerRadius,
+            this.outerRadius,
+            this.onPointerTouchEvent,
+            this.onViewResized);
     }
+
+    onPointerTouchEvent = (anglePercentage) => {
+        let step = Math.ceil(anglePercentage * this.steps);
+        this.value = step * (this.maxValue - this.minValue) / this.steps;
+        if (this.callback) {
+            this.callback(this.value);
+        }
+        this.drawProgressDot();
+    }
+
+    onViewResized = () => {
+        this.calculateContainerRelatedStuff();
+        this.positionMainView();
+        this.updateEventListener();
+    }
+
 
     setCallback(callback) {
         this.callback = callback;
@@ -271,25 +297,17 @@ class CircularSlider {
     calculateNotContainerRelatedStuff() {
         this.valueRangeSize = Math.abs(this.maxValue - this.minValue);
         this.steps = this.valueRangeSize / this.step;
-        this.activeProgressColorEnd = shadeColor(this.activeProgressColorStart, 80);
+        this.activeProgressColorEnd = shadeColor(this.activeProgressColorStart, 200);
         this.circumference = this.radius * TWO_PI;
         this.innerRadius = this.radius - this.progressWidth / 2;
         this.outerRadius = this.radius + this.progressWidth / 2;
-        this.height = this.width = this.outerRadius * 2;
+
+
+        this.height = this.width = (this.innerRadius + Math.max(this.endDotRadius * 2, this.progressWidth)) * 2;
         this.relativeCenterPoint = new Point(
             this.width / 2,
             this.height / 2
         );
-    }
-
-    registerResizeObserver() {
-        // TODO optimize like with mouse listeners only 1 per container!
-        let resizeObserver = new ResizeObserver(entries => {
-            this.calculateContainerRelatedStuff();
-            this.positionMainView();
-            this.updateEventListener();
-        });
-        resizeObserver.observe(document.body);
     }
 
     increaseContainerSizeIfNeeded() {
@@ -361,13 +379,14 @@ class CircularSlider {
         this.circularSliderViewSvg.appendChild(this.gridViewCircle);
 
 
-        // TODO make something more similar to the conic gradient
+        // TODO make something more similar to the conic gradient, probably with path instead of circle :/
+
         let linearGradient = document.createElementNS(SVG_NS, 'linearGradient');
         linearGradient.setAttribute("id", "gradient" + this.id);
         linearGradient.setAttribute("x1", "0%");
         linearGradient.setAttribute("y1", "0%");
         linearGradient.setAttribute("x2", "100%");
-        linearGradient.setAttribute("y2", "100%");
+        linearGradient.setAttribute("y2", "0%");
 
         let linearGradientStop = document.createElementNS(SVG_NS, 'stop');
         linearGradientStop.setAttribute("offset", "0%");
@@ -378,7 +397,6 @@ class CircularSlider {
         linearGradientStop.setAttribute("offset", "100%");
         linearGradientStop.setAttribute("stop-color", this.activeProgressColorStart);
         linearGradient.appendChild(linearGradientStop);
-
         this.circularSliderViewSvg.appendChild(linearGradient);
 
 
