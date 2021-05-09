@@ -67,7 +67,7 @@ class CircularSliderLegend {
     }
 
     applyColorOnSpan() {
-          this.colorSpan.style.background = `linear-gradient(to bottom, ${shadeColor(this.color,200)} ,  ${this.color})`;
+          this.colorSpan.style.background = `linear-gradient(to bottom, ${shadeColor(this.color,300)} ,  ${this.color})`;
     }
 
     applyLabelOnSpan() {

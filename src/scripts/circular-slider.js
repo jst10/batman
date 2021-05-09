@@ -177,12 +177,16 @@ class CircularSlider {
     callback = undefined;
     container = undefined;
     circularSliderViewSvg = undefined;
-    progressViewCircle = undefined;
+    progressViewCircle1 = undefined;
+    progressViewCircleOffset1 = 1;
+    progressViewCircle2 = undefined;
+    progressViewCircleOffset2 = 1;
     gridViewCircle = undefined;
     endDotViewCircle = undefined;
 
 
     activeProgressColorStart = CircularSlider.getRandomColor();
+    activeProgressColorMiddle = CircularSlider.getRandomColor();
     activeProgressColorEnd = CircularSlider.getRandomColor();
     minValue = 0;
     value = 25;
@@ -297,7 +301,8 @@ class CircularSlider {
     calculateNotContainerRelatedStuff() {
         this.valueRangeSize = Math.abs(this.maxValue - this.minValue);
         this.steps = this.valueRangeSize / this.step;
-        this.activeProgressColorEnd = shadeColor(this.activeProgressColorStart, 200);
+        this.activeProgressColorMiddle = shadeColor(this.activeProgressColorStart, 150);
+        this.activeProgressColorEnd = shadeColor(this.activeProgressColorStart, 300);
         this.circumference = this.radius * TWO_PI;
         this.innerRadius = this.radius - this.progressWidth / 2;
         this.outerRadius = this.radius + this.progressWidth / 2;
@@ -379,38 +384,10 @@ class CircularSlider {
         this.circularSliderViewSvg.appendChild(this.gridViewCircle);
 
 
-        // TODO make something more similar to the conic gradient, probably with path instead of circle :/
-
-        let linearGradient = document.createElementNS(SVG_NS, 'linearGradient');
-        linearGradient.setAttribute("id", "gradient" + this.id);
-        linearGradient.setAttribute("x1", "0%");
-        linearGradient.setAttribute("y1", "0%");
-        linearGradient.setAttribute("x2", "100%");
-        linearGradient.setAttribute("y2", "0%");
-
-        let linearGradientStop = document.createElementNS(SVG_NS, 'stop');
-        linearGradientStop.setAttribute("offset", "0%");
-        linearGradientStop.setAttribute("stop-color", this.activeProgressColorEnd);
-        linearGradient.appendChild(linearGradientStop);
-
-        linearGradientStop = document.createElementNS(SVG_NS, 'stop');
-        linearGradientStop.setAttribute("offset", "100%");
-        linearGradientStop.setAttribute("stop-color", this.activeProgressColorStart);
-        linearGradient.appendChild(linearGradientStop);
-        this.circularSliderViewSvg.appendChild(linearGradient);
-
-
-        this.progressViewCircle = document.createElementNS(SVG_NS, 'circle');
-        this.progressViewCircle.classList.add('progress-circle');
-        this.progressViewCircle.setAttribute("r", `${this.radius}`);
-        this.progressViewCircle.setAttribute("stroke-width", this.progressWidth);
-        this.progressViewCircle.setAttribute("cx", this.relativeCenterPoint.x);
-        this.progressViewCircle.setAttribute("cy", this.relativeCenterPoint.y);
-        this.progressViewCircle.setAttribute("stroke", `url(#gradient${this.id})`);
-        // this.progressViewCircle.style.stroke = this.activeProgressColorStart;
-
-        this.progressViewCircle.style.strokeDasharray = `${this.circumference} ${this.circumference}`;
-        this.circularSliderViewSvg.appendChild(this.progressViewCircle);
+        // TODO make something more similar to the conic gradient, probably with path instead of circles :/
+        let half = Math.round(this.width / 2);
+        this.progressViewCircle1 = this.createProgressCircle(1, half, this.width, this.activeProgressColorStart, this.activeProgressColorMiddle);
+        this.progressViewCircle2 = this.createProgressCircle(2, 0, half, this.activeProgressColorEnd, this.activeProgressColorMiddle);
 
         this.endDotViewCircle = document.createElementNS(SVG_NS, 'circle');
         this.endDotViewCircle.classList.add('end-dot-circle');
@@ -418,13 +395,72 @@ class CircularSlider {
         this.circularSliderViewSvg.appendChild(this.endDotViewCircle);
     }
 
+    createProgressCircle(count, startX, endX, startColor, endColor,) {
+
+        let defsView = document.createElementNS(SVG_NS, 'defs');
+        let mask = document.createElementNS(SVG_NS, 'mask');
+        mask.setAttribute("id", `progress-mask${count}-${this.id}`);
+        mask.setAttribute("maskUnits", "userSpaceOnUse");
+
+        let rect = document.createElementNS(SVG_NS, 'rect');
+        rect.setAttribute("x", "0");
+        rect.setAttribute("y", startX);
+        rect.setAttribute("width", this.height);
+        rect.setAttribute("height", endX);
+        mask.appendChild(rect);
+        defsView.appendChild(mask);
+        this.circularSliderViewSvg.appendChild(defsView);
+
+
+        let linearGradient = document.createElementNS(SVG_NS, 'linearGradient');
+        linearGradient.setAttribute("id", `gradient${count}-${this.id}`);
+        linearGradient.setAttribute("x1", "0%");
+        linearGradient.setAttribute("y1", "0%");
+        linearGradient.setAttribute("x2", "100%");
+        linearGradient.setAttribute("y2", "0%");
+
+        let linearGradientStop = document.createElementNS(SVG_NS, 'stop');
+        linearGradientStop.setAttribute("offset", "0%");
+        linearGradientStop.setAttribute("stop-color", endColor);
+        linearGradient.appendChild(linearGradientStop);
+
+        linearGradientStop = document.createElementNS(SVG_NS, 'stop');
+        linearGradientStop.setAttribute("offset", "100%");
+        linearGradientStop.setAttribute("stop-color", startColor);
+        linearGradient.appendChild(linearGradientStop);
+        this.circularSliderViewSvg.appendChild(linearGradient);
+
+        let progressViewCircle = document.createElementNS(SVG_NS, 'circle');
+        progressViewCircle.classList.add('progress-circle');
+        progressViewCircle.setAttribute("r", `${this.radius}`);
+        progressViewCircle.setAttribute("stroke-width", this.progressWidth);
+        progressViewCircle.setAttribute("cx", this.relativeCenterPoint.x);
+        progressViewCircle.setAttribute("cy", this.relativeCenterPoint.y);
+        progressViewCircle.setAttribute("stroke", `url(#gradient${count}-${this.id})`);
+        progressViewCircle.setAttribute("mask", `url(#progress-mask${count}-${this.id})`);
+        progressViewCircle.style.strokeDasharray = `${this.circumference} ${this.circumference}`;
+        this.circularSliderViewSvg.appendChild(progressViewCircle);
+
+        return progressViewCircle;
+    }
+
     getValuePartOfRange() {
         return (Math.abs(this.value - this.minValue) / (this.valueRangeSize));
     }
 
     drawProgressSvg() {
-        const offset = this.circumference - this.getValuePartOfRange() * this.circumference;
-        this.progressViewCircle.style.strokeDashoffset = `${offset}`;
+        const valuePartOfRange = this.getValuePartOfRange();
+        const offset = this.circumference - valuePartOfRange * this.circumference;
+        if (valuePartOfRange <= 0.5 || (valuePartOfRange > 0.5 && this.progressViewCircleOffset1 < 0.5)) {
+            this.progressViewCircleOffset1 = valuePartOfRange;
+            this.progressViewCircle1.style.strokeDashoffset = `${offset}`;
+        }
+        if (valuePartOfRange >= 0.5 || (valuePartOfRange < 0.5 && this.progressViewCircleOffset2 > 0.5)) {
+            this.progressViewCircleOffset2 = valuePartOfRange;
+            this.progressViewCircle2.style.strokeDashoffset = `${offset}`;
+        }
+
+
     }
 
     positionDotSvgCircle() {
